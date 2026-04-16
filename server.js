@@ -13,9 +13,9 @@ const NIM_API_BASE = process.env.NIM_API_BASE || 'https://integrate.api.nvidia.c
 const NIM_API_KEY = process.env.NIM_API_KEY;
 
 const MODEL_MAPPING = {
-  'gpt-3.5-turbo': 'deepseek-ai/deepseek-v3.2',
-  'gpt-4': 'deepseek-ai/deepseek-r1-0528',
-  'gpt-4-turbo': 'meta/llama-3.1-405b-instruct'
+  'gpt-3.5-turbo': 'z-ai/glm-4.7',
+  'gpt-4': 'moonshotai/kimi-k2.5',
+  'gpt-4-turbo': 'deepseek-ai/deepseek-v3.2'
 };
 
 app.get('/health', (req, res) => {
