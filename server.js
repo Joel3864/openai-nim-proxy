@@ -12,11 +12,11 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 const NIM_API_BASE = process.env.NIM_API_BASE || 'https://integrate.api.nvidia.com/v1';
 const NIM_API_KEY = process.env.NIM_API_KEY;
 
-// Correct model IDs for NVIDIA NIM
+// 1. VERIFY: Use exact model IDs from the NVIDIA NIM catalog
 const MODEL_MAPPING = {
-  'gpt-3.5-turbo': 'z-ai/glm4.7',                // GLM-4.7 (no hyphen)
-  'gpt-4': 'moonshotai/kimi-k2.5',               // Kimi K2.5
-  'gpt-4-turbo': 'deepseek-ai/deepseek-v3.2'     // DeepSeek V3.2
+  'gpt-3.5-turbo': 'z-ai/glm4.7',
+  'gpt-4': 'moonshotai/kimi-k2.5',
+  'gpt-4-turbo': 'deepseek-ai/deepseek-v3.2'
 };
 
 app.get('/health', (req, res) => {
@@ -41,50 +41,30 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
   try {
     const {
       model,
-      messages: originalMessages,
+      messages,
       temperature,
       max_tokens,
       stream = false,
-      enable_thinking = false   // Control thinking mode
+      enable_thinking = false
     } = req.body;
 
     const nimModel = MODEL_MAPPING[model] || MODEL_MAPPING['gpt-3.5-turbo'];
 
-    // Build messages with proper system prompt for thinking control
-    let messages = [...originalMessages];
-    
-    if (enable_thinking) {
-      // Add or replace system prompt to enable detailed thinking
-      const hasSystemPrompt = messages.some(m => m.role === 'system');
-      if (hasSystemPrompt) {
-        // Replace existing system prompt
-        messages = messages.map(m => 
-          m.role === 'system' ? { ...m, content: "detailed thinking on" } : m
-        );
-      } else {
-        // Add system prompt at the beginning
-        messages.unshift({ role: "system", content: "detailed thinking on" });
-      }
-    } else {
-      // Ensure thinking is disabled via system prompt
-      const hasSystemPrompt = messages.some(m => m.role === 'system');
-      if (!hasSystemPrompt) {
-        messages.unshift({ role: "system", content: "detailed thinking off" });
-      }
-    }
-
-    // Build NVIDIA NIM request
+    // 2. FIX: Build the request with explicit thinking control
     const nimRequest = {
       model: nimModel,
       messages: messages,
-      temperature: enable_thinking ? 0.6 : (temperature || 0.7),
+      temperature: enable_thinking ? 0.6 : (temperature || 0),
       max_tokens: max_tokens || 1024,
       stream: stream
     };
 
-    // For GLM-4.7, use proper thinking budget control if needed
-    if (enable_thinking) {
-      nimRequest.top_p = 0.95;  // Recommended for thinking mode
+    // Crucially, add chat_template_kwargs for GLM-4.7
+    if (nimModel === 'z-ai/glm4.7') {
+      nimRequest.chat_template_kwargs = {
+        enable_thinking: enable_thinking,
+        clear_thinking: false
+      };
     }
 
     const response = await axios.post(`${NIM_API_BASE}/chat/completions`, nimRequest, {
@@ -100,47 +80,14 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
       res.setHeader('Content-Type', 'text/plain');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
-
-      // Parse streaming chunks to extract both reasoning and content
-      response.data.on('data', (chunk) => {
-        const chunkStr = chunk.toString();
-        const lines = chunkStr.split('\n').filter(line => line.trim() !== '');
-        
-        for (const line of lines) {
-          if (line.includes('[DONE]')) {
-            res.write('data: [DONE]\n\n');
-            continue;
-          }
-          if (line.startsWith('data: ')) {
-            try {
-              const parsed = JSON.parse(line.slice(6));
-              if (parsed.choices && parsed.choices[0].delta) {
-                const delta = parsed.choices[0].delta;
-                // Ensure we capture both reasoning and content
-                if (!delta.content && delta.reasoning_content) {
-                  // If only reasoning is present, we might want to include it
-                  // But for now, we'll pass it through
-                  parsed.choices[0].delta.content = parsed.choices[0].delta.content || '';
-                }
-              }
-              res.write(`data: ${JSON.stringify(parsed)}\n\n`);
-            } catch (e) {
-              // Ignore parse errors for incomplete chunks
-            }
-          }
-        }
-      });
-      
-      response.data.on('end', () => {
-        res.end();
-      });
+      response.data.pipe(res);
       return;
     }
 
     // --- Handle Non-Streaming ---
     const assistantMessage = response.data.choices[0].message;
 
-    // Build OpenAI-compatible response
+    // 3. FIX: Build a reliable OpenAI-compatible response
     const openaiResponse = {
       id: `chatcmpl-${Date.now()}`,
       object: 'chat.completion',
@@ -150,7 +97,7 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
         index: 0,
         message: {
           role: assistantMessage.role,
-          content: assistantMessage.content || ""   // Final answer
+          content: assistantMessage.content || "",
         },
         finish_reason: response.data.choices[0].finish_reason
       }],
@@ -161,7 +108,7 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
       }
     };
 
-    // If thinking was enabled, add the reasoning trace as an extra field
+    // Include reasoning trace if thinking was enabled and it exists
     if (enable_thinking && assistantMessage.reasoning_content) {
       openaiResponse.choices[0].message.reasoning_content = assistantMessage.reasoning_content;
     }
