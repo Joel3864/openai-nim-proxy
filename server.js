@@ -14,9 +14,9 @@ const NIM_API_KEY = process.env.NIM_API_KEY;
 
 // 1. VERIFY: Use exact model IDs from the NVIDIA NIM catalog
 const MODEL_MAPPING = {
-  'gpt-3.5-turbo': 'z-ai/glm4.7',
+  'gpt-3.5-turbo': 'z-ai/glm5.1',
   'gpt-4': 'moonshotai/kimi-k2.5',
-  'gpt-4-turbo': 'deepseek-ai/deepseek-v3.2'
+  'gpt-4-turbo': 'z-ai/glm4.7'
 };
 
 app.get('/health', (req, res) => {
