@@ -57,6 +57,9 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
       temperature: enable_thinking ? 0.6 : (temperature || 0),
       max_tokens: max_tokens || 1024,
       stream: stream
+      nimRequest.chat_template_kwargs = {
+        enable_thinking: false //enable_thinking: enable_thinking to turn on
+      };
     };
 
     // Crucially, add chat_template_kwargs for GLM-4.7
