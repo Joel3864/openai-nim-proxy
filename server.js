@@ -62,7 +62,7 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
     // Crucially, add chat_template_kwargs for GLM-4.7
     if (nimModel === 'z-ai/glm-5.1') {
     nimRequest.chat_template_kwargs = {
-        enable_thinking: false
+        enable_thinking: enable_thinking
       };
     } else if (nimModel === 'z-ai/glm4.7') {
       nimRequest.chat_template_kwargs = {
