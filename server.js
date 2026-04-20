@@ -56,14 +56,15 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
       messages: messages,
       temperature: enable_thinking ? 0.6 : (temperature || 0),
       max_tokens: max_tokens || 1024,
-      stream: stream
-      nimRequest.chat_template_kwargs = {
-        enable_thinking: false //enable_thinking: enable_thinking to turn on
-      };
+      stream: stream,
     };
 
     // Crucially, add chat_template_kwargs for GLM-4.7
-    if (nimModel === 'z-ai/glm4.7') {
+    if (nimModel === 'z-ai/glm-5.1'} {
+    nimRequest.chat_template_kwargs = {
+        enable_thinking: false
+      };
+    } else if (nimModel === 'z-ai/glm4.7') {
       nimRequest.chat_template_kwargs = {
         enable_thinking: enable_thinking,
         clear_thinking: false
