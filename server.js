@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const Bottleneck = require('bottleneck');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +12,11 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 const NIM_API_BASE = process.env.NIM_API_BASE || 'https://integrate.api.nvidia.com/v1';
 const NIM_API_KEY = process.env.NIM_API_KEY;
+
+// Rate limiter: max 40 requests per minute (1 every 1.5 seconds)
+const nimLimiter = new Bottleneck({
+    minTime: 1500  // milliseconds between requests
+});
 
 // 1. VERIFY: Use exact model IDs from the NVIDIA NIM catalog
 const MODEL_MAPPING = {
@@ -71,13 +77,15 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
       };
     }
 
-    const response = await axios.post(`${NIM_API_BASE}/chat/completions`, nimRequest, {
-      headers: {
-        'Authorization': `Bearer ${NIM_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      responseType: stream ? 'stream' : 'json'
-    });
+const response = await nimLimiter.schedule(() => 
+    axios.post(`${NIM_API_BASE}/chat/completions`, nimRequest, {
+        headers: {
+            'Authorization': `Bearer ${NIM_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        responseType: stream ? 'stream' : 'json'
+    })
+);
 
     // --- Handle Streaming ---
     if (stream) {
