@@ -22,7 +22,7 @@ const nimLimiter = new Bottleneck({
 const MODEL_MAPPING = {
   'gpt-3.5-turbo': 'z-ai/glm-5.2',
   'gpt-4': 'moonshotai/kimi-k2.5',
-  'gpt-4-turbo': 'z-ai/glm4.7'
+  'gpt-4-turbo': 'poolside/laguna-xs-2.1'
 };
 
 app.get('/health', (req, res) => {
