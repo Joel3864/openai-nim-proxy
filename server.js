@@ -76,6 +76,14 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
         clear_thinking: false
       };
     }
+      // possible to remove the old glm-5.1 / glm4.7 blocks entirely
+
+// For GLM-5.3, pass reasoning_effort inside chat_template_kwargs
+if (nimModel === 'z-ai/glm-5.3') {
+  nimRequest.chat_template_kwargs = {
+    reasoning_effort: 'low' // or 'low' / 'high'
+  };
+}
 
 const response = await nimLimiter.schedule(() => 
     axios.post(`${NIM_API_BASE}/chat/completions`, nimRequest, {
@@ -121,7 +129,7 @@ const response = await nimLimiter.schedule(() =>
     };
 
     // Include reasoning trace if thinking was enabled and it exists
-    if (enable_thinking && assistantMessage.reasoning_content) {
+    if (assistantMessage.reasoning_content) {
       openaiResponse.choices[0].message.reasoning_content = assistantMessage.reasoning_content;
     }
 
