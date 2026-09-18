@@ -22,7 +22,7 @@ const nimLimiter = new Bottleneck({
 const MODEL_MAPPING = {
   'gpt-3.5-turbo': 'z-ai/glm-5.3',
   'gpt-4': 'moonshotai/kimi-k2.5',
-  'gpt-4-turbo': 'poolside/laguna-xs-2.1'
+  'gpt-4-turbo': 'z-ai/glm-5.3-flash'
 };
 
 app.get('/health', (req, res) => {
@@ -78,11 +78,11 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
     }
       // possible to remove the old glm-5.1 / glm4.7 blocks entirely
 
-// For GLM-5.3, pass reasoning_effort inside chat_template_kwargs
-if (nimModel === 'z-ai/glm-5.3') {
-  nimRequest.chat_template_kwargs = {
-    reasoning_effort: 'low' // or 'low' / 'high'
-  };
+// For GLM-5.3, pass reasoning_effort
+// Set reasoning_effort as a TOP-LEVEL parameter
+if (nimModel === 'z-ai/glm-5.3' || nimModel === 'z-ai/glm-5.3-flash') {
+    // Use a reasonable default like 'high' or 'max' if not provided
+    nimRequest.reasoning_effort = req.body.reasoning_effort || 'low';
 }
 
 const response = await nimLimiter.schedule(() => 
