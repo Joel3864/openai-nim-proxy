@@ -12,6 +12,9 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 const NIM_API_BASE = process.env.NIM_API_BASE || 'https://integrate.api.nvidia.com/v1';
 const NIM_API_KEY = process.env.NIM_API_KEY;
+if (!NIM_API_KEY) { 
+    console.error('FATAL: NIM_API_KEY not set'); process.exit(1);
+}
 
 // Rate limiter: max 40 requests per minute (1 every 1.5 seconds)
 const nimLimiter = new Bottleneck({
