@@ -53,18 +53,23 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
       messages,
       temperature,
       max_tokens,
+      max_completion_tokens,
       stream = false,
       enable_thinking = false
     } = req.body;
 
     const nimModel = MODEL_MAPPING[model] || MODEL_MAPPING['gpt-3.5-turbo'];
 
+    // OpenAI precedence: max_completion_tokens wins if present
+    const effectiveMaxTokens = max_completion_tokens ?? max_tokens ?? 1024;
+      
     // 2. FIX: Build the request with explicit thinking control
     const nimRequest = {
       model: nimModel,
       messages: messages,
       temperature: enable_thinking ? 0.6 : (temperature || 0),
-      max_tokens: max_tokens || 1024,
+      max_tokens: effectiveMaxTokens,
+      
       stream: stream,
     };
 
