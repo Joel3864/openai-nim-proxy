@@ -94,7 +94,7 @@ if (nimModel === 'z-ai/glm-5.3' || nimModel === 'z-ai/glm-5.3-flash') {
 }
 
 if (nimModel === 'mistralai/mistral-large-4-1t-a52b') {
-  nimRequest.reasoning_effort = enable_thinking ? 'high' : 'none';
+  nimRequest.reasoning_effort = enable_thinking ? 'high' : 'low';
 }
       
 const response = await nimLimiter.schedule(() => 
