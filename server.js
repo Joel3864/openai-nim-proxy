@@ -16,11 +16,11 @@ if (!NIM_API_KEY) {
     console.error('FATAL: NIM_API_KEY not set'); process.exit(1);
 }
 
-/* Rate limiter: max 40 requests per minute (1 every 1.5 seconds)
+Rate limiter: max 40 requests per minute (1 every 1.5 seconds)
  const nimLimiter = new Bottleneck({
     minTime: 1500  // milliseconds between requests
 });
-*/
+
 
 // 1. VERIFY: Use exact model IDs from the NVIDIA NIM catalog
 const MODEL_MAPPING = {
