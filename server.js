@@ -62,7 +62,7 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
     const nimModel = MODEL_MAPPING[model] || MODEL_MAPPING['gpt-3.5-turbo'];
 
     // OpenAI precedence: max_completion_tokens wins if present
-    const effectiveMaxTokens = max_completion_tokens ?? max_tokens ?? 1024;
+    const effectiveMaxTokens = max_completion_tokens ?? max_tokens ?? 32768;
       
     // 2. FIX: Build the request with explicit thinking control
     const nimRequest = {
