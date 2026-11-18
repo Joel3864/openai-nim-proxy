@@ -79,7 +79,7 @@ const nimModel = model;
     const nimRequest = {
       model: nimModel,
       messages: messages,
-      temperature: enable_thinking ? 0.6 : (temperature || 0),
+      temperature: temperature ?? (enable_thinking ? 0.6 : 0),
       max_tokens: effectiveMaxTokens,
       
       stream: stream,
