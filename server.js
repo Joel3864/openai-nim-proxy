@@ -23,11 +23,25 @@ if (!NIM_API_KEY) {
 
 
 // 1. VERIFY: Use exact model IDs from the NVIDIA NIM catalog
-const MODEL_MAPPING = {
-  'gpt-3.5-turbo': 'mistralai/mistral-large-4-1t-a52b',
-  'gpt-4': 'deepseek-ai/deepseek-v4.1-flash',
-  'gpt-4-turbo': 'z-ai/glm-5.3-flash'
-};
+const AVAILABLE_MODELS = [
+  'mistralai/mistral-large-4-1t-a52b',
+  'deepseek-ai/deepseek-v4.1-flash',
+  'z-ai/glm-5.3-flash',
+  'moonshotai/kimi-k3.1-pro'
+  // ...
+];
+
+app.get(['/v1/models', '/models'], (req, res) => {
+  res.json({
+    object: 'list',
+    data: AVAILABLE_MODELS.map(id => ({
+      id,
+      object: 'model',
+      created: 1700000000,
+      owned_by: 'nvidia'
+    }))
+  });
+});
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'OpenAI to NVIDIA NIM Proxy' });
@@ -59,7 +73,12 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
       enable_thinking = false
     } = req.body;
 
-    const nimModel = MODEL_MAPPING[model] || MODEL_MAPPING['gpt-3.5-turbo'];
+    if (!model || typeof model !== 'string') {
+  return res.status(400).json({
+    error: { message: 'model is required', type: 'invalid_request_error', code: 400 }
+  });
+}
+const nimModel = model;
 
     // OpenAI precedence: max_completion_tokens wins if present
     const effectiveMaxTokens = max_completion_tokens ?? max_tokens ?? 32768;
@@ -75,18 +94,13 @@ app.post(['/v1/chat/completions', '/chat/completions'], async (req, res) => {
     };
 
     // Crucially, add chat_template_kwargs for GLM-4.7
-    if (nimModel === 'z-ai/glm-5.1') {
-    nimRequest.chat_template_kwargs = {
-        enable_thinking: enable_thinking
-      };
-    } else if (nimModel === 'z-ai/glm4.7') {
-      nimRequest.chat_template_kwargs = {
-        enable_thinking: enable_thinking,
-        clear_thinking: false
-      };
-    }
-      // possible to remove the old glm-5.1 / glm4.7 blocks entirely
-
+if (nimModel.startsWith('z-ai/glm')) {
+  nimRequest.chat_template_kwargs = {
+    enable_thinking,
+    clear_thinking: false
+  };
+}
+      
 // For GLM-5.3, pass reasoning_effort
 // Set reasoning_effort as a TOP-LEVEL parameter
 if (nimModel === 'z-ai/glm-5.3' || nimModel === 'z-ai/glm-5.3-flash') {
@@ -110,7 +124,7 @@ const response = await nimLimiter.schedule(() =>
 
     // --- Handle Streaming ---
     if (stream) {
-      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       response.data.pipe(res);
