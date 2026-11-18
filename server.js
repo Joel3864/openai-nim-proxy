@@ -166,6 +166,27 @@ const response = await nimLimiter.schedule(() =>
       console.error('NIM API error details:', error.response.data);
     }
 
+    
+} catch (error) {
+  let detail = error.message;
+  if (error.response) {
+    const data = error.response.data;
+    if (data && typeof data.pipe === 'function') {
+      // stream body — drain it to a string
+      let raw = '';
+      for await (const chunk of data) raw += chunk;
+      try { detail = JSON.parse(raw).error?.message || raw; } catch { detail = raw; }
+    } else if (data?.error?.message) {
+      detail = data.error.message;
+    }
+  }
+    
+  console.error('Proxy error:', detail);
+  res.status(error.response?.status || 500).json({
+    error: { message: detail, type: 'invalid_request_error',
+             code: error.response?.status || 500 }
+  });
+}
     res.status(error.response?.status || 500).json({
       error: {
         message: error.message || 'Internal server error',
