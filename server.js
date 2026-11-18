@@ -46,14 +46,6 @@ app.get(['/v1/models', '/models'], (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'OpenAI to NVIDIA NIM Proxy' });
 });
-
-app.get(['/v1/models', '/models'], (req, res) => {
-  const models = Object.keys(MODEL_MAPPING).map(model => ({
-    id: model,
-    object: 'model',
-    created: Date.now(),
-    owned_by: 'nvidia-nim-proxy'
-  }));
   
   res.json({
     object: 'list',
@@ -127,7 +119,13 @@ const response = await nimLimiter.schedule(() =>
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
       response.data.pipe(res);
+      response.data.on('error', (err) => {
+         console.error('Upstream stream error:', err.message);
+      res.end();
+      });
+      req.on('close', () => response.data.destroy());   // ← add this
       return;
     }
 
